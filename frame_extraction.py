@@ -16,7 +16,7 @@ class FrameExctracor(threading.Thread):
             os.makedirs(self.out_path )
         
     def run(self, ):  
-        for i , (game_play, frame) in tqdm(self.gp2f.iterrows(), total = self.gp2f.shape[0], leave=False):
+        for i , (game_play, frame) in tqdm(self.gp2f.iterrows(), total = self.gp2f.shape[0], position=0 , leave=True):
             for zone in ['Endzone', 'Sideline']:
 
                 cap = cv2.VideoCapture(os.path.join(self.path,f'{game_play}_{zone}.mp4'))
