@@ -36,8 +36,12 @@ def extract_parallel(df, path, out_path,  num_threads=None):
             .agg(set)
     if num_threads is None:
         num_threads=5
+    threads = []
     for i , chank_df in enumerate(np.array_split(gp2f, num_threads)):
         
         fe = FrameExctracor(chank_df, path, out_path)
         fe.name = f'frame_executor_{i}'
         fe.start()
+        threads.append(fe)
+    for t in threads:
+        t.join()
