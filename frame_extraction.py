@@ -33,7 +33,9 @@ class FrameExctracor(threading.Thread):
 def extract_parallel(df, path, out_path,  num_threads=None):
     gp2f = df[['game_play', 'frame']]\
             .groupby(['game_play'], as_index=False)\
-            .agg(set)
+            .agg(list)
+    gp2f.frame = gp2f.frame.apply(lambda x: set(x))
+    
     if num_threads is None:
         num_threads=5
     threads = []
