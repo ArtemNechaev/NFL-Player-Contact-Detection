@@ -30,14 +30,11 @@ class FrameExctracor(threading.Thread):
                     ret, frame_img = cap.read()
                     
 
-def extract_parallel(df, path, out_path,  num_threads=None):
-    gp2f = df[['game_play', 'frame']]\
-            .groupby(['game_play'], as_index=False)\
-            .agg(list)
-    gp2f.frame = gp2f.frame.apply(lambda x: set(x))
+def extract_parallel(gp2f, path, out_path,  num_threads=None):
     
     if num_threads is None:
         num_threads=5
+        
     threads = []
     for i , chank_df in enumerate(np.array_split(gp2f, num_threads)):
         
