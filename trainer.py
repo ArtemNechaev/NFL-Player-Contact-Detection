@@ -15,6 +15,8 @@ class Trainer():
                  batch_size, num_epoch, loss_fn, grad_acc_step=1, max_grad_norm=1,  eval_batch_size=None,
                  max_eval_batches=None, 
                  lr=5e-5, weight_decay=0,
+                 train_transform = None,
+                 val_transform = None,
                  optimizer=None, scheduler=None,
                  metrics: List[Tuple[str, Callable]] = [],
                  eval_freq=5000, saving_path='.', model_name='model', sampler=None, 
@@ -34,6 +36,9 @@ class Trainer():
         self.grad_acc_step = grad_acc_step
         self.max_grad_norm = max_grad_norm
         self.freq_online_loss_plot = freq_online_loss_plot
+        
+        self.train_transform = train_transform.to(self.device)
+        self.val_transform = val_transform.to(self.device)
         
         if eval_batch_size is None:
             self.eval_batch_size = batch_size
@@ -88,13 +93,16 @@ class Trainer():
         eval_outputs = {"preds": [], "targets": []}
         if max_eval_batches is None:
             max_eval_batches = len(val_dataloader)
-
+            
+        self.model.eval()
         for eval_step, val_batch in enumerate(val_dataloader):
             if eval_step > max_eval_batches:
                 break
 
             val_batch = self.data2device(val_batch)
-            self.model.eval()
+            if self.val_transform is not None:
+                val_batch = self.val_transform(val_batch)
+                
             with torch.no_grad():
 
                 loss, logits = self.compute_loss(val_batch)
@@ -143,6 +151,9 @@ class Trainer():
                   self.step = step
                   self.model.train()
                   batch = self.data2device(batch)
+                  if self.train_transform is not None:
+                      batch = self.train_transform(batch)
+                    
                   loss, pred_scores = self.compute_loss(batch)
                   loss.backward()
                   if (step + 1) % self.grad_acc_step == 0:
