@@ -37,8 +37,13 @@ class Trainer():
         self.max_grad_norm = max_grad_norm
         self.freq_online_loss_plot = freq_online_loss_plot
         
-        self.train_transform = train_transform.to(self.device)
-        self.val_transform = val_transform.to(self.device)
+        self.train_transform = train_transform
+        if train_transform is not None:
+            self.train_transform = self.train_transform.to(self.device)
+            
+        self.val_transform = val_transform
+        if val_transform is not None:
+            self.val_transform = self.val_transform.to(self.device)
         
         if eval_batch_size is None:
             self.eval_batch_size = batch_size
