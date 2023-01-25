@@ -17,7 +17,7 @@ class Trainer():
                  lr=5e-5, weight_decay=0,
                  train_transform = None,
                  val_transform = None,
-                 optimizer=None, scheduler=None,
+                 optimizer=None, scheduler=None, post_procc_fn = None,
                  metrics: List[Tuple[str, Callable]] = [],
                  eval_freq=5000, saving_path='.', model_name='model', sampler=None, 
                  freq_online_loss_plot: int = -1):
@@ -36,6 +36,7 @@ class Trainer():
         self.grad_acc_step = grad_acc_step
         self.max_grad_norm = max_grad_norm
         self.freq_online_loss_plot = freq_online_loss_plot
+        self.post_procc_fn = post_procc_fn
         
         self.train_transform = train_transform
         if train_transform is not None:
@@ -106,16 +107,19 @@ class Trainer():
 
             val_batch = self.data2device(val_batch)
             if self.val_transform is not None:
-                val_batch = self.val_transform(val_batch)
+                val_batch['imgs'] = self.val_transform(val_batch['imgs'])
                 
             with torch.no_grad():
 
                 loss, logits = self.compute_loss(val_batch)
                 val_loss += loss.item()
                 
-                ids = val_batch['label'].flatten() != -100
-                y_pred = logits.argmax(-1).flatten()[ids]
-                y_true = val_batch['label'].flatten()[ids]
+                if self.post_procc_fn is None:
+                    ids = val_batch['label'].flatten() != -100
+                    y_pred = logits.argmax(-1).flatten()[ids]
+                    y_true = val_batch['label'].flatten()[ids]
+                else:
+                    y_true, y_pred  = self.post_procc_fn(logits, **val_batch)
                 
                 eval_outputs['preds'].extend(y_pred.cpu().numpy())
                 eval_outputs['targets'].extend(y_true.cpu().numpy())
@@ -157,7 +161,7 @@ class Trainer():
                   self.model.train()
                   batch = self.data2device(batch)
                   if self.train_transform is not None:
-                      batch = self.train_transform(batch)
+                      batch['imgs'] = self.train_transform(batch['imgs'])
                     
                   loss, pred_scores = self.compute_loss(batch)
                   loss.backward()
@@ -175,7 +179,7 @@ class Trainer():
                       val_loss_set.append(val_loss)
                       x_val_set.append(step)
 
-                      # log metrics and loss to tensorboard
+                      # log metrics 
                       for name, func in self.metrics:
                           value = func(**eval_outputs)
 
@@ -194,7 +198,7 @@ class Trainer():
                           self.scheduler.step(val_loss)
 
                   # plot online loss
-                  if self.freq_online_loss_plot > 0 and step % self.freq_online_loss_plot == 0:
+                  if self.freq_online_loss_plot > 0 and (step % self.freq_online_loss_plot == 0 or step == len(train_dataloader)-1):
                       clear_output(True)
 
                       fig, axs  = plt.subplots(len(self.metrics) + 1, 2,figsize=(18, 5 + 5*len(self.metrics)))
